@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import sys
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 MAX_BYTES = 1_000_000
 KINDS = {"fact", "condition", "uncertainty", "boundary", "output"}
 RULES = [
@@ -21,9 +21,30 @@ RULES = [
      "核对开头是否可以直接给答案或真实阻塞原因。"),
     ("A05", "确定性过强", r"百分之百|毫无疑问|绝对不会|肯定没有问题",
      "核对证据与适用条件；有证明的确定判断不必改。"),
+    ("A06", "假中立或无差别清单", r"多个维度综合考虑|多维度综合考虑|需要综合考虑|从多个(?:维度|方面)考虑|视情况而定|具体情况具体分析|各有(?:优劣|利弊)|没有一刀切|见仁见智|因(?:情况|项目|团队)而异",
+     "若确实取决于条件，写明触发条件并给出首选；若信息已足够，收敛为有条件的选择。"),
+    ("E01", "英文身份前置", r"\b(?:as|being)\s+an?\s+(?:ai|artificial intelligence|large language model|language model)\b",
+     "英文仅基础模式覆盖：确认身份说明是否与当前任务有关；未命中不代表已审查。"),
+    ("E02", "英文通用免责", r"for reference only|at your own risk|not (?:constitute|to be construed as)[^.\n]{0,40}advice|cannot provide (?:professional|legal|medical|financial) advice|please consult a (?:professional|specialist)",
+     "英文仅基础模式覆盖：保留具体风险，压缩无信息免责。"),
+    ("E03", "英文社交填充", r"(?:great|good) question|hope (?:this|that|it) helps|feel free to (?:ask|reach out)|let me know if you (?:have|need)",
+     "英文仅基础模式覆盖：若没有新增信息，删掉；不要删除真正的情绪回应。"),
+    ("E04", "英文假中立", r"it (?:really )?depends|each (?:option )?has its (?:pros and cons|trade-?offs)|there are (?:pros and cons|no one-size-fits-all)|multiple factors|case by case",
+     "英文仅基础模式覆盖：是否给出有条件的选择与会使选择反转的条件。"),
+    ("E05", "英文答案延后", r"^(?:that'?s a (?:great|good) question|before (?:i|we) (?:answer|dive in)|first(?:ly)?,?\s+(?:it'?s important to note|i (?:need|should|must) (?:note|mention|clarify)))",
+     "英文仅基础模式覆盖：核对首句能否直接给答案或真实阻塞原因。"),
 ]
-COMPILED = [(rid, label, re.compile(pattern), fix) for rid, label, pattern, fix in RULES]
+FIRST_SENTENCE_RULES = {"A04", "E05"}
+COMPILED = [(rid, label, re.compile(pattern, re.IGNORECASE), fix) for rid, label, pattern, fix in RULES]
 NUMBER = re.compile(r"[0-9]+(?:\.[0-9]+)?")
+LIST_NUMBER = re.compile(r"(?m)^[ \t]{0,3}(?:[#*>-]{1,6}[ \t]*)?\(?(\d{1,3})\)?[.)、](?=[ \t]|$)")
+STEP_NUMBER = re.compile(r"第[ \t]*(\d{1,3})[ \t]*[步条项点章节]")
+SYNONYM_THRESHOLD = 0.6
+_ZERO_WIDTH = dict.fromkeys(map(ord, "\u200b\u200c\u200d\ufeff\u00a0"), None)
+_FULLWIDTH = {0xFF10 + i: ord("0") + i for i in range(10)}
+_FULLWIDTH.update({0xFF21 + i: ord("A") + i for i in range(26)})
+_FULLWIDTH.update({0xFF41 + i: ord("a") + i for i in range(26)})
+_PUNCTUATION = dict.fromkeys(map(ord, " \t\r\n.,;:!?'\"`~_|/\\-—·、，。；：！？（）()[]{}<>"), " ")
 
 
 def mask_protected(text):
@@ -54,6 +75,46 @@ def mask_protected(text):
     return "".join(chars)
 
 
+def number_scan_text(text):
+    """Blank out list and step numbering so C03 does not report them as new numbers."""
+    chars = list(text)
+    for regex in (LIST_NUMBER, STEP_NUMBER):
+        for match in regex.finditer(text):
+            for index in range(*match.span(1)):
+                chars[index] = " "
+    return "".join(chars)
+
+
+def normalize(value):
+    """Fold width, case, zero-width characters and punctuation for literal comparison."""
+    folded = value.translate(_FULLWIDTH).translate(_ZERO_WIDTH).casefold().translate(_PUNCTUATION)
+    return folded.replace(" ", "")
+
+
+def anchor_match(text, normalized_text, alternatives):
+    for value in alternatives:
+        if value in text:
+            return True, "literal", value
+    for value in alternatives:
+        folded = normalize(value)
+        if folded and folded in normalized_text:
+            return True, "normalized", value
+    return False, "none", None
+
+
+def synonym_overlap(alternatives, normalized_text):
+    """Best bigram overlap between any anchor alternative and the candidate text."""
+    best = 0.0
+    longest = 0
+    for value in alternatives:
+        folded = normalize(value)
+        longest = max(longest, len(folded))
+        grams = {folded[i:i + 2] for i in range(len(folded) - 1)}
+        if grams:
+            best = max(best, sum(1 for gram in grams if gram in normalized_text) / len(grams))
+    return best, longest
+
+
 def finding(text, rule, category, severity, start, end, hint):
     return {
         "rule": rule, "category": category, "severity": severity,
@@ -69,7 +130,7 @@ def collect(text):
     first = re.search(r"\S[^。！？\n]*", masked)
     hits = []
     for rule, label, regex, fix in COMPILED:
-        if rule == "A04":
+        if rule in FIRST_SENTENCE_RULES:
             if first is None:
                 continue
             window, base = first.group(), first.start()
@@ -127,15 +188,24 @@ def audit(text, baseline=None, contract=None):
         validate_contract(contract)
     hits = collect(text)
     checks = []
+    normalized_text = normalize(text)
     if contract is not None:
         for item in contract["required"]:
-            matches = [value for value in item["any_of"] if value in text]
+            matched, matched_by, evidence = anchor_match(text, normalized_text, item["any_of"])
             checks.append({"id": item["id"], "kind": item["kind"], "label": item["label"],
-                           "matched": bool(matches), "evidence": matches, "source": item["source"]})
-            if not matches:
-                hit = finding(text, "C01", "声明锚点缺失", "blocker", None, None,
-                              "核对是否遗漏或改写了：" + item["label"] + "。同义改写需人工核实后更新合同。")
+                           "matched": matched, "matched_by": matched_by,
+                           "evidence": [evidence] if matched else [], "source": item["source"]})
+            if not matched:
+                overlap, longest = synonym_overlap(item["any_of"], normalized_text)
+                if overlap >= SYNONYM_THRESHOLD and longest >= 4:
+                    hit = finding(text, "C01", "锚点疑似同义改写", "review", None, None,
+                                  "未字面命中：" + item["label"] + "。用词高度接近，人工确认是否同义改写，"
+                                  "确认后更新合同的 any_of；不要据此认定已保留。")
+                else:
+                    hit = finding(text, "C01", "声明锚点缺失", "blocker", None, None,
+                                  "核对是否遗漏或改写了：" + item["label"] + "。同义改写需人工核实后更新合同。")
                 hit["anchor_id"] = item["id"]
+                hit["anchor_overlap"] = round(overlap, 3) if not matched else None
                 hits.append(hit)
         for phrase in contract["forbidden"]:
             start = text.find(phrase)
@@ -145,10 +215,11 @@ def audit(text, baseline=None, contract=None):
     added = []
     if baseline is not None:
         sources = "" if contract is None else "\n".join(item["source"] for item in contract["required"])
-        known = set(NUMBER.findall(baseline + "\n" + sources))
-        added = sorted(set(NUMBER.findall(text)) - known)
+        known = set(NUMBER.findall(number_scan_text(baseline) + "\n" + sources))
+        scan_text = number_scan_text(text)
+        added = sorted(set(NUMBER.findall(scan_text)) - known)
         for number in added:
-            match = next(m for m in NUMBER.finditer(text) if m.group() == number)
+            match = next(m for m in NUMBER.finditer(scan_text) if m.group() == number)
             hits.append(finding(text, "C03", "新增数字待核实", "review", match.start(), match.end(),
                                 "基线和声明来源中没有该数字；确认是否是有依据的新信息或步骤编号。"))
     stats = summarize(text, hits)

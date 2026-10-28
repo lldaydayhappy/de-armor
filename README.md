@@ -4,7 +4,7 @@
 
 <h1 align="center">🛡️ De-Armor — task-oriented response calibration</h1>
 
-<p align="center"><strong>Version 2.0.3</strong></p>
+<p align="center"><strong>Version 2.1.0</strong></p>
 
 <p align="center">
   <em>Less self-defense, more results. Cut the filler, never the facts. A skill that turns evasive, padded, or fake-neutral AI answers back into something that actually moves the task forward.</em>
@@ -12,11 +12,11 @@
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.3-c6ff70?style=flat" alt="Version 2.0.3"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.0-c6ff70?style=flat" alt="Version 2.1.0"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/tests-36%20passing-65a30d" alt="36 tests passing">
+  <img src="https://img.shields.io/badge/tests-47%20passing-65a30d" alt="47 tests passing">
   <img src="https://img.shields.io/badge/runtime-offline%20%C2%B7%20no%20API-1a73e8" alt="Offline, no API">
 </p>
 
@@ -244,7 +244,7 @@ de-armor/
 │   └── rewrite-examples.md      # Practice scenarios and rerun guide
 └── scripts/
     ├── armor_lint.py            # Read-only auditor
-    ├── selftest.py              # 36 self-tests
+    ├── selftest.py              # 47 self-tests
     └── build_demo.py            # Build / verify the demo
 ```
 
@@ -262,6 +262,7 @@ de-armor/
 
 ## Changelog
 
+- **2.1.0** — Detection expands without turning stricter: new A06 catches fake-neutral "it depends / weigh multiple factors" filler while conditional picks stay clean; E01–E05 add basic English patterns (identity preamble, boilerplate disclaimers, praise filler, fake neutrality, delayed opening) and are advisory only. Contract anchors now match after width/case/whitespace/punctuation normalization, near-miss anchors downgrade to a review hint instead of a blocker, and C03 ignores list and "step N" numbering so layout is not reported as a new fact. Self-tests 36 → 47.
 - **2.0.3** — Docs only: install instructions are fully agent-agnostic — no per-product paths, no vendor names. Load `SKILL.md` however your agent already loads skills. No behavior change.
 - **2.0.2** — README rebuilt in a centered, badge-first bilingual format with a custom banner. No behavior change.
 - **2.0.1** — Added a bilingual README.

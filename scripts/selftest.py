@@ -75,6 +75,30 @@ class SurfaceTests(unittest.TestCase):
         report = engine.audit("这个方案百分之百没有问题。")
         self.assertIn("A05", {h["rule"] for h in report["violations"]})
 
+    def test_false_neutral_is_flagged(self):
+        text = "两种方案各有优劣，没有一刀切的答案，建议从多个维度综合考虑。"
+        self.assertIn("A06", {h["rule"] for h in engine.collect(text)})
+
+    def test_conditional_choice_is_not_flagged(self):
+        text = "选 MySQL，因为团队熟悉它；出现 PostgreSQL 专属需求再评估。"
+        self.assertEqual(engine.collect(text), [])
+
+    def test_english_surface_is_flagged(self):
+        text = ("As an AI language model, I cannot provide professional advice, "
+                "and this is for reference only. Hope this helps.")
+        rules = {h["rule"] for h in engine.collect(text)}
+        self.assertTrue({"E01", "E02", "E03"} <= rules, rules)
+
+    def test_english_neutral_and_delayed_opening(self):
+        text = "That's a great question. It depends, and each option has its pros and cons."
+        rules = {h["rule"] for h in engine.collect(text)}
+        self.assertTrue({"E04", "E05"} <= rules, rules)
+
+    def test_english_is_advisory_only(self):
+        report = engine.audit("As an AI, this is for reference only.")
+        self.assertTrue(report["passed"])
+        self.assertTrue(all(h["severity"] == "review" for h in report["violations"]))
+
 
 class ContractTests(unittest.TestCase):
     def test_complete(self):
@@ -131,6 +155,38 @@ class ContractTests(unittest.TestCase):
 
     def test_no_number_baseline_explicit(self):
         self.assertFalse(engine.audit("504。", contract=CONTRACT)["numbers"]["checked"])
+
+    def test_list_numbering_is_not_a_new_number(self):
+        candidate = "排查顺序：\n1. 先查下游耗时。\n2. 再核对数据库。\n"
+        report = engine.audit(candidate, baseline=GOOD, contract=CONTRACT)
+        self.assertEqual(report["numbers"]["added"], [])
+
+    def test_step_numbering_is_not_a_new_number(self):
+        report = engine.audit("第1步查下游耗时，第2步核对数据库。", baseline=GOOD, contract=CONTRACT)
+        self.assertEqual(report["numbers"]["added"], [])
+
+    def test_real_number_next_to_list_is_still_reported(self):
+        candidate = "排查顺序：\n1. 先查下游耗时。\n2. 约 30 项要核对。\n"
+        report = engine.audit(candidate, baseline=GOOD, contract=CONTRACT)
+        self.assertEqual(report["numbers"]["added"], ["30"])
+
+    def test_fullwidth_anchor_matches_after_normalization(self):
+        contract = json.loads(json.dumps(CONTRACT))
+        contract["required"][0]["any_of"] = ["200ms"]
+        report = engine.audit("P95 达到 ２００ｍｓ。先查下游耗时。", contract=contract)
+        self.assertEqual(report["anchors"]["items"][0]["matched_by"], "normalized")
+        self.assertTrue(report["passed"])
+
+    def test_synonym_rewrite_is_review_not_blocker(self):
+        contract = json.loads(json.dumps(CONTRACT))
+        contract["required"][0]["any_of"] = ["不能确定根因"]
+        report = engine.audit("无法确定根因。先查下游耗时。", contract=contract)
+        self.assertTrue(report["passed"])
+        self.assertEqual([h["severity"] for h in report["violations"] if h["rule"] == "C01"], ["review"])
+
+    def test_unrelated_candidate_still_blocked(self):
+        report = engine.audit("先查下游耗时。", contract=CONTRACT)
+        self.assertEqual(report["stats"]["counts"]["blocker"], 1)
 
 
 class CLITests(unittest.TestCase):

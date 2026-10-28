@@ -4,7 +4,7 @@
 
 <h1 align="center">🛡️ 破甲 De-Armor — 任务导向的回复校准</h1>
 
-<p align="center"><strong>Version 2.0.3</strong></p>
+<p align="center"><strong>Version 2.1.0</strong></p>
 
 <p align="center">
   <em>少一点自保，多一点结果。删掉套话，不能删掉事实。当 AI 开始推诿、铺垫、假中立或只讲原则不交付时，把回答拉回能推进任务的样子。</em>
@@ -12,11 +12,11 @@
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.3-c6ff70?style=flat" alt="Version 2.0.3"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.0-c6ff70?style=flat" alt="Version 2.1.0"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/tests-36%20passing-65a30d" alt="36 项自测通过">
+  <img src="https://img.shields.io/badge/tests-47%20passing-65a30d" alt="47 项自测通过">
   <img src="https://img.shields.io/badge/runtime-offline%20%C2%B7%20no%20API-1a73e8" alt="离线，无 API">
 </p>
 
@@ -243,7 +243,7 @@ de-armor/
 │   └── rewrite-examples.md      # 场景练习与复跑方法
 └── scripts/
     ├── armor_lint.py            # 只读审查器
-    ├── selftest.py              # 36 项自测
+    ├── selftest.py              # 47 项自测
     └── build_demo.py            # 实验台构建/校验
 ```
 
@@ -261,6 +261,7 @@ de-armor/
 
 ## 更新日志
 
+- **2.1.0** — 检测面扩展但标准不变严：新增 A06 识别“各有优劣 / 需综合考虑”式假中立，写明触发条件的选择不受影响；新增 E01–E05 英文基础模式（身份前置、通用免责、赞美填充、假中立、答案延后），全部为提示级。合同锚点匹配前做全角/大小写/空白/标点归一化，疑似同义改写降级为提示而非阻断；C03 不再把有序列表编号和“第 N 步”当作新增数字。自测 36 → 47 项。
 - **2.0.3** — 仅文档：安装说明完全平台无关——不写具体产品路径、不点名厂商，按你的 agent 原有方式加载 `SKILL.md` 即可。行为无变化。
 - **2.0.2** — README 重做为居中、徽章优先的双语版本，并加入自定义横幅。行为无变化。
 - **2.0.1** — 新增中英双语 README。
