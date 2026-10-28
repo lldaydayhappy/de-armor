@@ -4,7 +4,7 @@
 
 <h1 align="center">🛡️ De-Armor — task-oriented response calibration</h1>
 
-<p align="center"><strong>Version 2.0.2</strong></p>
+<p align="center"><strong>Version 2.0.3</strong></p>
 
 <p align="center">
   <em>Less self-defense, more results. Cut the filler, never the facts. A skill that turns evasive, padded, or fake-neutral AI answers back into something that actually moves the task forward.</em>
@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.2-c6ff70?style=flat" alt="Version 2.0.2"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.3-c6ff70?style=flat" alt="Version 2.0.3"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
@@ -48,7 +48,7 @@
 
 AI answers often fail in a specific way: they are optimized to look careful instead of being useful. Disclaimers come first, research gets pushed back to the user, "it depends" replaces a conditional recommendation, uncertainty is flattened into certainty — or a useful sentence is compressed into an empty one.
 
-**de-armor** is a task-oriented response calibration skill. It locks the task and the information that must survive, then rewrites from the task instead of from a banned-word list. Facts, conditions, negations, uncertainty, and permission boundaries stay. Repetition, identity preambles, and empty hedging go.
+**de-armor** is a task-oriented response calibration skill, packaged as a portable `SKILL.md` rather than a vendor plugin. It is not tied to any single agent or vendor. It locks the task and the information that must survive, then rewrites from the task instead of from a banned-word list. Facts, conditions, negations, uncertainty, and permission boundaries stay. Repetition, identity preambles, and empty hedging go.
 
 | You get | What it does |
 |---|---|
@@ -76,21 +76,23 @@ Short, healthy answers should ship as-is. When the user just says "de-armor" / "
 
 ## Install
 
+de-armor is a portable `SKILL.md` plus optional `references/` and `scripts/`. Nothing in it is tied to a specific product: no SDK, no runtime, no config file, no vendor API. Any agent that can read a skill file — or a system prompt — can use it.
+
 ```sh
 # From ClawHub
 clawhub install de-armor
+
+# Or clone it and wire it up yourself
+git clone https://github.com/ninetyhe-90/de-armor.git
 ```
 
-Or drop this folder into your agent's skills directory:
+Then load it the way your agent already loads skills:
 
-```sh
-git clone https://github.com/ninetyhe-90/de-armor.git \
-  ~/.hermes/skills/de-armor
-```
+- **Agent with a skills directory** — drop the folder in; the directory layout is the convention, not a requirement.
+- **Agent driven by rules or instructions** — paste `SKILL.md` into its rule file, `AGENTS.md`, or system prompt.
+- **No skill mechanism at all** — prepend `SKILL.md` to the conversation context.
 
 The core workflow only needs `SKILL.md`. The auditor is optional and uses the Python 3.9+ standard library, with no third-party packages.
-
----
 
 ## Preview
 
@@ -260,6 +262,7 @@ de-armor/
 
 ## Changelog
 
+- **2.0.3** — Docs only: install instructions are fully agent-agnostic — no per-product paths, no vendor names. Load `SKILL.md` however your agent already loads skills. No behavior change.
 - **2.0.2** — README rebuilt in a centered, badge-first bilingual format with a custom banner. No behavior change.
 - **2.0.1** — Added a bilingual README.
 - **2.0.0** — Task-oriented rewrite. Removed banned-word scoring and the 90-point threshold. Added `schema_version: 2`, information contracts, new-number checks, six reproducible cases, and an offline demo.

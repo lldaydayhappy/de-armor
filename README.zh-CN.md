@@ -4,7 +4,7 @@
 
 <h1 align="center">🛡️ 破甲 De-Armor — 任务导向的回复校准</h1>
 
-<p align="center"><strong>Version 2.0.2</strong></p>
+<p align="center"><strong>Version 2.0.3</strong></p>
 
 <p align="center">
   <em>少一点自保，多一点结果。删掉套话，不能删掉事实。当 AI 开始推诿、铺垫、假中立或只讲原则不交付时，把回答拉回能推进任务的样子。</em>
@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.2-c6ff70?style=flat" alt="Version 2.0.2"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.0.3-c6ff70?style=flat" alt="Version 2.0.3"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
@@ -48,7 +48,7 @@
 
 AI 的回答经常以一种很具体的方式失效：它被优化成「看起来很谨慎」，而不是「真的有用」。先免责、再铺垫、把查资料的工作退回用户、用「各有优劣」代替选择、把不确定说成确定——或者反过来，把一句有用的话压成一句空话。
 
-**破甲（de-armor）** 是一份任务导向的回复校准技能。它先锁定任务和不可丢失的信息，再从任务重写，而不是从禁词表重写。事实、条件、否定、不确定性和权限边界留下；重复、身份前置和空对冲删掉。
+**破甲（de-armor）** 是一份任务导向的回复校准技能，以可移植的 `SKILL.md` 分发，不绑定任何单一 agent 或平台。它先锁定任务和不可丢失的信息，再从任务重写，而不是从禁词表重写。事实、条件、否定、不确定性和权限边界留下；重复、身份前置和空对冲删掉。
 
 | 你会得到 | 它做什么 |
 |---|---|
@@ -76,21 +76,23 @@ AI 的回答经常以一种很具体的方式失效：它被优化成「看起�
 
 ## 安装
 
+破甲是一份可移植的 `SKILL.md` 加上可选的 `references/` 和 `scripts/`。里面没有任何东西绑定某个产品：没有 SDK、没有运行时、没有配置文件、没有厂商 API。任何能读技能文件或系统提示的 agent 都能用。
+
 ```sh
 # 从 ClawHub 安装
 clawhub install de-armor
+
+# 或克隆后自行接入
+git clone https://github.com/ninetyhe-90/de-armor.git
 ```
 
-或把本目录放进你的 agent 技能目录：
+然后按你的 agent 原本加载技能的方式接入：
 
-```sh
-git clone https://github.com/ninetyhe-90/de-armor.git \
-  ~/.hermes/skills/de-armor
-```
+- **有技能目录的 agent**——把整个目录放进去即可；目录结构是约定，不是硬性要求。
+- **靠规则/指令驱动的 agent**——把 `SKILL.md` 贴进它的规则文件、`AGENTS.md` 或系统提示。
+- **没有技能机制**——把 `SKILL.md` 前置到对话上下文。
 
 核心流程只依赖 `SKILL.md`。审查器是可选的，只用 Python 3.9+ 标准库，不需要第三方包。
-
----
 
 ## 预览
 
@@ -259,6 +261,7 @@ de-armor/
 
 ## 更新日志
 
+- **2.0.3** — 仅文档：安装说明完全平台无关——不写具体产品路径、不点名厂商，按你的 agent 原有方式加载 `SKILL.md` 即可。行为无变化。
 - **2.0.2** — README 重做为居中、徽章优先的双语版本，并加入自定义横幅。行为无变化。
 - **2.0.1** — 新增中英双语 README。
 - **2.0.0** — 任务导向重写。移除禁词打分和 90 分门槛；新增 `schema_version: 2`、信息合同、新增数字检查、6 个可复现案例和离线实验台。
