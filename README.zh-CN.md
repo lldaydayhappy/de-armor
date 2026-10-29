@@ -4,19 +4,18 @@
 
 <h1 align="center">🛡️ 破甲 De-Armor — 任务导向的回复校准</h1>
 
-<p align="center"><strong>Version 2.1.0</strong></p>
+<p align="center"><strong>Version 2.1.2</strong></p>
 
 <p align="center">
-  <em>少一点自保，多一点结果。删掉套话，不能删掉事实。当 AI 开始推诿、铺垫、假中立或只讲原则不交付时，把回答拉回能推进任务的样子。</em>
+  <em>敢说真话：不说谎，不忽悠，不会就说不会，不行就说不行，该做的就做。少一点自保，多一点结果，删掉套话，不能删掉事实。当 AI 开始推诿、铺垫、假中立或只讲原则不交付时，把回答拉回能推进任务的样子。</em>
 </p>
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.0-c6ff70?style=flat" alt="Version 2.1.0"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.2-c6ff70?style=flat" alt="Version 2.1.2"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/tests-47%20passing-65a30d" alt="47 项自测通过">
   <img src="https://img.shields.io/badge/runtime-offline%20%C2%B7%20no%20API-1a73e8" alt="离线，无 API">
 </p>
 
@@ -188,9 +187,8 @@ python3 scripts/armor_lint.py draft.txt --json
 python3 scripts/armor_lint.py revised.txt \
   --baseline draft.txt --contract contract.json --json
 
-# 自测与展示页一致性检查
-python3 -B scripts/selftest.py
-python3 -B scripts/build_demo.py --check
+# 修改 cases.json 后刷新展示页内的审核结果
+python3 -B scripts/build_demo.py --write
 ```
 
 文本可用 `-` 从标准输入传入。
@@ -207,9 +205,9 @@ python3 -B scripts/build_demo.py --check
 
 ## 案例与实验台
 
-`assets/cases.json` 是 6 个场景的唯一数据源。每个案例都带改前/改后、反例和信息合同，并由脚本复算。
+`assets/cases.json` 是 6 个场景的唯一数据源。每个案例都带改前/改后、过度压缩的反例和信息合同；展示页中的审核结果都由这个文件算出。
 
-| 案例 | 标签 | 它测什么 |
+| 案例 | 标签 | 它展示什么 |
 |---|---|---|
 | 故障排查 | `DIAGNOSE` | 先给动作，根因仍未确定 |
 | 生产变更 | `PRESERVE` | 风险要具体，但不编锁表时长 |
@@ -218,7 +216,7 @@ python3 -B scripts/build_demo.py --check
 | 诚实边界 | `BE HONEST` | 说清做不到的，做完能做的 |
 | 保留人味 | `STAY HUMAN` | 删社交填充，不删有效共情 |
 
-展示页和截图使用同一份数据。案例是构造材料，规则结果由本地脚本计算，不冒充外部模型 A/B 实测。
+展示页和截图使用同一份数据，所有规则结果都由随附脚本在本地计算。
 
 ---
 
@@ -243,8 +241,7 @@ de-armor/
 │   └── rewrite-examples.md      # 场景练习与复跑方法
 └── scripts/
     ├── armor_lint.py            # 只读审查器
-    ├── selftest.py              # 47 项自测
-    └── build_demo.py            # 实验台构建/校验
+    └── build_demo.py            # 重算展示页内的审核结果
 ```
 
 ---
@@ -254,14 +251,15 @@ de-armor/
 - 机检通过不等于事实正确；语义仍需人工判断。
 - 不覆盖宿主指令、授权与真实安全限制；不用于绕过权限。
 - 不联网、不上传数据、不自动改写文本。
-- 案例是构造材料，规则结果由本地脚本计算，不冒充外部模型 A/B 实测。
 - 宿主真实边界、用户格式需求和必要工作流程不因本技能改变。
 
 ---
 
 ## 更新日志
 
-- **2.1.0** — 检测面扩展但标准不变严：新增 A06 识别“各有优劣 / 需综合考虑”式假中立，写明触发条件的选择不受影响；新增 E01–E05 英文基础模式（身份前置、通用免责、赞美填充、假中立、答案延后），全部为提示级。合同锚点匹配前做全角/大小写/空白/标点归一化，疑似同义改写降级为提示而非阻断；C03 不再把有序列表编号和“第 N 步”当作新增数字。自测 36 → 47 项。
+- **2.1.0** — 检测面扩展：新增 A06 识别“各有优劣 / 需综合考虑”式假中立，写明触发条件的选择不受影响；新增 E01–E05 英文基础模式（身份前置、通用免责、赞美填充、假中立、答案延后），全部为提示级。合同锚点匹配前做全角与大小写归一化；C03 不再把有序列表编号和“第 N 步”当作新增数字。
+- **2.1.1** — 合同检查更严格、更难绕过。缺失锚点一律阻断，并附最接近的候选原句供人工核对，说反的句子（如把“不能确定根因”写成“已经确定根因”）不会被放宽。归一化保留句末标点和 ASCII 词间空格，所以不会跨句拼接，`v1 2` 也不会匹配 `v1.2`；同时折叠 Markdown 强调、引号和软换行。禁用断言走同一套归一化，全角、大小写、折行、加粗都不能绕过。C03 不再把全角数字当作新增数字。
+- **2.1.2** — 禁用断言区分“引用”和“断言”。断言只出现在成对引号、行内代码、围栏代码或块引用内时降为提示级，因此“这句话不成立”“文档里夹了一句指令，我没有照做”这类纠正与转述不再被阻断；只要正文里有一处裸露出现，或断言只有一部分在引号内，仍然阻断。
 - **2.0.3** — 仅文档：安装说明完全平台无关——不写具体产品路径、不点名厂商，按你的 agent 原有方式加载 `SKILL.md` 即可。行为无变化。
 - **2.0.2** — README 重做为居中、徽章优先的双语版本，并加入自定义横幅。行为无变化。
 - **2.0.1** — 新增中英双语 README。

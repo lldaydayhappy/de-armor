@@ -4,19 +4,18 @@
 
 <h1 align="center">🛡️ De-Armor — task-oriented response calibration</h1>
 
-<p align="center"><strong>Version 2.1.0</strong></p>
+<p align="center"><strong>Version 2.1.2</strong></p>
 
 <p align="center">
-  <em>Less self-defense, more results. Cut the filler, never the facts. A skill that turns evasive, padded, or fake-neutral AI answers back into something that actually moves the task forward.</em>
+  <em>Say the truth: no lying, no bluffing. If you don't know, say so; if it can't be done, say so; if it should be done, do it. Less self-defense, more results. Cut the filler, never the facts. A skill that turns evasive, padded, or fake-neutral AI answers back into something that actually moves the task forward.</em>
 </p>
 
 <p align="center">
   <a href="https://github.com/ninetyhe-90/de-armor/stargazers"><img src="https://img.shields.io/github/stars/ninetyhe-90/de-armor?logo=github&label=Stars" alt="GitHub stars"></a>
-  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.0-c6ff70?style=flat" alt="Version 2.1.0"></a>
+  <a href="https://github.com/ninetyhe-90/de-armor"><img src="https://img.shields.io/badge/version-2.1.2-c6ff70?style=flat" alt="Version 2.1.2"></a>
   <a href="https://clawhub.ai/skills/de-armor"><img src="https://img.shields.io/badge/ClawHub-de--armor-6b8e23" alt="ClawHub de-armor"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?logo=python&logoColor=fff" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/tests-47%20passing-65a30d" alt="47 tests passing">
   <img src="https://img.shields.io/badge/runtime-offline%20%C2%B7%20no%20API-1a73e8" alt="Offline, no API">
 </p>
 
@@ -189,9 +188,8 @@ python3 scripts/armor_lint.py draft.txt --json
 python3 scripts/armor_lint.py revised.txt \
   --baseline draft.txt --contract contract.json --json
 
-# Self-test and demo consistency check
-python3 -B scripts/selftest.py
-python3 -B scripts/build_demo.py --check
+# Refresh the embedded evidence after editing cases.json
+python3 -B scripts/build_demo.py --write
 ```
 
 Pass `-` to read from stdin.
@@ -208,9 +206,9 @@ Exit codes: `0` no machine block (human review still required); `1` contract blo
 
 ## Cases and demo
 
-`assets/cases.json` is the single source of truth for six scenarios. Each case ships with before/after text, a counterexample, and an information contract, all re-checked by the scripts.
+`assets/cases.json` is the single source of truth for six scenarios. Each case ships with before/after text, an over-compressed counterexample, and an information contract; the audit results shown in the demo are computed from this file.
 
-| Case | Tag | What it tests |
+| Case | Tag | What it shows |
 |---|---|---|
 | Incident triage | `DIAGNOSE` | Action first, root cause still unknown |
 | Production change | `PRESERVE` | Specific risk without inventing lock time |
@@ -219,7 +217,7 @@ Exit codes: `0` no machine block (human review still required); `1` contract blo
 | Honest boundaries | `BE HONEST` | Name the limit, finish what can be done |
 | Keep the human tone | `STAY HUMAN` | Remove padding, not empathy |
 
-The demo and screenshots come from the same data. Cases are constructed material; rule results are computed locally. They are not presented as external model A/B tests.
+The demo and screenshots come from the same data, and every rule result is computed locally by the bundled script.
 
 ---
 
@@ -244,8 +242,7 @@ de-armor/
 │   └── rewrite-examples.md      # Practice scenarios and rerun guide
 └── scripts/
     ├── armor_lint.py            # Read-only auditor
-    ├── selftest.py              # 47 self-tests
-    └── build_demo.py            # Build / verify the demo
+    └── build_demo.py            # Regenerate the demo evidence
 ```
 
 ---
@@ -255,14 +252,15 @@ de-armor/
 - Passing the machine check is not proof of factual correctness; semantics still need a human.
 - It does not override host instructions, authorization, or real safety limits, and must not be used to bypass permissions.
 - No network access, no data uploads, no automatic rewriting.
-- Cases are constructed material and rule results are computed locally; they are not presented as external model A/B tests.
 - Real host boundaries, user formatting needs, and required workflows are unchanged by this skill.
 
 ---
 
 ## Changelog
 
-- **2.1.0** — Detection expands without turning stricter: new A06 catches fake-neutral "it depends / weigh multiple factors" filler while conditional picks stay clean; E01–E05 add basic English patterns (identity preamble, boilerplate disclaimers, praise filler, fake neutrality, delayed opening) and are advisory only. Contract anchors now match after width/case/whitespace/punctuation normalization, near-miss anchors downgrade to a review hint instead of a blocker, and C03 ignores list and "step N" numbering so layout is not reported as a new fact. Self-tests 36 → 47.
+- **2.1.0** — Detection expands: new A06 catches fake-neutral "it depends / weigh multiple factors" filler while conditional picks stay clean; E01–E05 add basic English patterns (identity preamble, boilerplate disclaimers, praise filler, fake neutrality, delayed opening) and are advisory only. Contract anchors are matched after width and case folding, and C03 ignores list and "step N" numbering so layout is not reported as a new fact.
+- **2.1.1** — Contract checking is stricter and harder to evade. A missing anchor always blocks and now carries the nearest candidate sentence for the reviewer, so a reversed statement ("cannot determine the root cause" to "root cause is determined") is never softened. Normalization keeps sentence punctuation and spaces between ASCII tokens, so anchors cannot match across sentences and `v1 2` is not `v1.2`; it also folds Markdown emphasis, quotes and soft line breaks. Forbidden assertions use the same normalization, so width, case, line wraps and bold markers cannot hide them. Fullwidth digits no longer count as new numbers in C03.
+- **2.1.2** — Forbidden assertions now distinguish quoting from asserting. An assertion that appears only inside paired quotes, inline code, fenced code or a block quote is downgraded to a review hint, so "that statement is not true" and "the document contains an instruction I did not follow" are no longer blocked; any bare occurrence, or an assertion that only partly sits inside a quote, still blocks.
 - **2.0.3** — Docs only: install instructions are fully agent-agnostic — no per-product paths, no vendor names. Load `SKILL.md` however your agent already loads skills. No behavior change.
 - **2.0.2** — README rebuilt in a centered, badge-first bilingual format with a custom banner. No behavior change.
 - **2.0.1** — Added a bilingual README.
