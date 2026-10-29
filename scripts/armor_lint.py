@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 import re
 import sys
+import unicodedata
 
-VERSION = "2.1.0"
+VERSION = "2.1.2"
 MAX_BYTES = 1_000_000
 KINDS = {"fact", "condition", "uncertainty", "boundary", "output"}
 RULES = [
@@ -39,12 +40,14 @@ COMPILED = [(rid, label, re.compile(pattern, re.IGNORECASE), fix) for rid, label
 NUMBER = re.compile(r"[0-9]+(?:\.[0-9]+)?")
 LIST_NUMBER = re.compile(r"(?m)^[ \t]{0,3}(?:[#*>-]{1,6}[ \t]*)?\(?(\d{1,3})\)?[.)、](?=[ \t]|$)")
 STEP_NUMBER = re.compile(r"第[ \t]*(\d{1,3})[ \t]*[步条项点章节]")
-SYNONYM_THRESHOLD = 0.6
+NEAREST_THRESHOLD = 0.5
 _ZERO_WIDTH = dict.fromkeys(map(ord, "\u200b\u200c\u200d\ufeff\u00a0"), None)
-_FULLWIDTH = {0xFF10 + i: ord("0") + i for i in range(10)}
-_FULLWIDTH.update({0xFF21 + i: ord("A") + i for i in range(26)})
-_FULLWIDTH.update({0xFF41 + i: ord("a") + i for i in range(26)})
-_PUNCTUATION = dict.fromkeys(map(ord, " \t\r\n.,;:!?'\"`~_|/\\-—·、，。；：！？（）()[]{}<>"), " ")
+_ZERO_WIDTH_SPACE = {ord(c): " " for c in "\u200b\u200c\u200d\ufeff\u00a0"}
+_CJK = r"\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef"
+_SPACE_AROUND_CJK = re.compile(
+    r"(?<=[" + _CJK + r"])[ \t]*\r?\n[ \t]*(?=[" + _CJK + r"])|[ \t]+(?=[" + _CJK + r"])|(?<=[" + _CJK + r"])[ \t]+")
+_MARKUP = re.compile(r"[*_`~\"'\u2018\u2019\u201c\u201d\u300c\u300d\u300e\u300f]+")
+_SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?；;])|\n+")
 
 
 def mask_protected(text):
@@ -77,6 +80,7 @@ def mask_protected(text):
 
 def number_scan_text(text):
     """Blank out list and step numbering so C03 does not report them as new numbers."""
+    text = fold_width(text)
     chars = list(text)
     for regex in (LIST_NUMBER, STEP_NUMBER):
         for match in regex.finditer(text):
@@ -85,10 +89,24 @@ def number_scan_text(text):
     return "".join(chars)
 
 
+def fold_width(value):
+    """Length-preserving NFKC: fullwidth letters, digits and punctuation become ASCII; offsets stay valid."""
+    return "".join(c if len(unicodedata.normalize("NFKC", c)) != 1 else unicodedata.normalize("NFKC", c) for c in value)
+
+
+def fold_text_for_scan(value):
+    """Length-preserving fold used to locate forbidden phrases: width and case only, nothing is deleted."""
+    return fold_width(value).translate(_ZERO_WIDTH_SPACE).casefold()
+
+
 def normalize(value):
-    """Fold width, case, zero-width characters and punctuation for literal comparison."""
-    folded = value.translate(_FULLWIDTH).translate(_ZERO_WIDTH).casefold().translate(_PUNCTUATION)
-    return folded.replace(" ", "")
+    """Fold width, case and zero-width characters; drop Markdown emphasis, quotes, spaces next to CJK text, and a single soft line break between CJK characters (blank lines are kept).
+
+    Sentence punctuation and spaces between ASCII tokens are kept on purpose: removing them
+    would let an anchor match across sentence boundaries or turn 'v1 2' into 'v1.2'.
+    """
+    folded = _MARKUP.sub("", fold_width(value).translate(_ZERO_WIDTH).casefold())
+    return _SPACE_AROUND_CJK.sub("", folded)
 
 
 def anchor_match(text, normalized_text, alternatives):
@@ -102,17 +120,103 @@ def anchor_match(text, normalized_text, alternatives):
     return False, "none", None
 
 
-def synonym_overlap(alternatives, normalized_text):
-    """Best bigram overlap between any anchor alternative and the candidate text."""
-    best = 0.0
-    longest = 0
-    for value in alternatives:
-        folded = normalize(value)
-        longest = max(longest, len(folded))
-        grams = {folded[i:i + 2] for i in range(len(folded) - 1)}
-        if grams:
-            best = max(best, sum(1 for gram in grams if gram in normalized_text) / len(grams))
-    return best, longest
+def nearest_sentence(alternatives, text):
+    """Candidate sentence most similar to a missing anchor, so a reviewer can judge rewrite vs deletion."""
+    best, best_sentence = 0.0, None
+    for sentence in (s.strip() for s in _SENTENCE_SPLIT.split(text)):
+        folded_sentence = normalize(sentence)
+        if not folded_sentence:
+            continue
+        for value in alternatives:
+            folded = normalize(value)
+            grams = {folded[i:i + 2] for i in range(len(folded) - 1)}
+            if not grams:
+                continue
+            overlap = sum(1 for gram in grams if gram in folded_sentence) / len(grams)
+            if overlap > best:
+                best, best_sentence = overlap, sentence
+    return (best, best_sentence) if best >= NEAREST_THRESHOLD else (best, None)
+
+
+EDGE_PUNCTUATION = set("\u3002\uff0c\uff1b\uff1a\uff01\uff1f\u3001.,;:!? ")
+QUOTE_PAIRS = [("\u201c", "\u201d"), ("\u2018", "\u2019"), ("\u300c", "\u300d"), ("\u300e", "\u300f"), ('"', '"')]
+
+
+def quoted_spans(text):
+    """Character spans inside paired quotes, inline code, fenced code and block quotes."""
+    spans = []
+    protected = mask_protected(text)
+    run = None
+    for index, (original, kept) in enumerate(zip(text, protected)):
+        hidden = kept == " " and original not in " \t\r\n"
+        if hidden and run is None:
+            run = index
+        elif not hidden and run is not None:
+            spans.append((run, index))
+            run = None
+    if run is not None:
+        spans.append((run, len(text)))
+    for open_q, close_q in QUOTE_PAIRS:
+        body = "[^" + re.escape(close_q) + "\\n]{1,200}"
+        for match in re.finditer(re.escape(open_q) + body + re.escape(close_q), text):
+            spans.append(match.span())
+    return spans
+
+
+def normalize_with_origin(text):
+    """Normalize the full text once and return (normalized, origin) where origin[i] is the source index of char i.
+
+    Normalization is applied in the same order as normalize(): fold width/zero-width/case, strip markup,
+    then drop CJK-adjacent spaces and a single soft line break. Positions are tracked through every deletion.
+    """
+    chars = [(c, i) for i, c in enumerate(text)]
+    folded = []
+    for c, i in chars:
+        piece = fold_width(c).translate(_ZERO_WIDTH).casefold()
+        for q in piece:
+            folded.append((q, i))
+    current = folded
+    for regex in (_MARKUP, _SPACE_AROUND_CJK):
+        string = "".join(c for c, _ in current)
+        doomed = set()
+        for match in regex.finditer(string):
+            doomed.update(range(match.start(), match.end()))
+        current = [item for idx, item in enumerate(current) if idx not in doomed]
+    return "".join(c for c, _ in current), [i for _, i in current]
+
+
+def normalized_occurrences_all_quoted(text, phrase, spans):
+    """Third-layer check: every normalized occurrence of the phrase must lie completely inside ONE quoted span.
+
+    An assertion that starts outside a quote and only ends inside one (root cause is "the database") is bare.
+    """
+    target = normalize(phrase)
+    if not target:
+        return False
+    flat, origin = normalize_with_origin(text)
+    owner_of = {}
+    for number, (a, b) in enumerate(spans):
+        for index in range(a, b):
+            owner_of.setdefault(index, number)
+    start = flat.find(target)
+    while start >= 0:
+        core = [k for k in range(start, start + len(target)) if flat[k] not in EDGE_PUNCTUATION]
+        owners = {owner_of.get(origin[k], -1) for k in core} if core else {-1}
+        if len(owners) != 1 or -1 in owners:
+            return False
+        start = flat.find(target, start + 1)
+    return True
+
+
+def all_occurrences_quoted(text, phrase, spans):
+    """True when every occurrence of the phrase lies inside a quoted span."""
+    start = text.find(phrase)
+    while start >= 0:
+        end = start + len(phrase)
+        if not any(a <= start and end <= b for a, b in spans):
+            return False
+        start = text.find(phrase, start + 1)
+    return True
 
 
 def finding(text, rule, category, severity, start, end, hint):
@@ -196,26 +300,50 @@ def audit(text, baseline=None, contract=None):
                            "matched": matched, "matched_by": matched_by,
                            "evidence": [evidence] if matched else [], "source": item["source"]})
             if not matched:
-                overlap, longest = synonym_overlap(item["any_of"], normalized_text)
-                if overlap >= SYNONYM_THRESHOLD and longest >= 4:
-                    hit = finding(text, "C01", "锚点疑似同义改写", "review", None, None,
-                                  "未字面命中：" + item["label"] + "。用词高度接近，人工确认是否同义改写，"
-                                  "确认后更新合同的 any_of；不要据此认定已保留。")
-                else:
-                    hit = finding(text, "C01", "声明锚点缺失", "blocker", None, None,
-                                  "核对是否遗漏或改写了：" + item["label"] + "。同义改写需人工核实后更新合同。")
+                overlap, nearest = nearest_sentence(item["any_of"], text)
+                hint = "核对是否遗漏或改写了：" + item["label"] + "。同义改写需人工核实后更新合同。"
+                if nearest:
+                    hint += "最接近的原句：「" + nearest[:60] + "」。若语义确实等价，把它加入 any_of；若含义相反或更弱，保持阻断。"
+                hit = finding(text, "C01", "声明锚点缺失", "blocker", None, None, hint)
                 hit["anchor_id"] = item["id"]
-                hit["anchor_overlap"] = round(overlap, 3) if not matched else None
+                hit["nearest"] = nearest
                 hits.append(hit)
+        spans = quoted_spans(text)
+        folded_text = fold_text_for_scan(text)
+        folded_spans = quoted_spans(folded_text) if len(folded_text) == len(text) else spans
         for phrase in contract["forbidden"]:
-            start = text.find(phrase)
-            if start >= 0:
-                hits.append(finding(text, "C02", "命中声明禁用断言", "blocker", start, start + len(phrase),
-                                    "核对合同禁止的断言，不要自动删除引用中的内容。"))
+            # Layer 1: exact; layer 2: width/case folded (positions preserved, quote-aware);
+            # layer 3: full normalization (markup, soft wraps) - no position, always a blocker.
+            if text.find(phrase) >= 0:
+                scan_text, scan_phrase, scan_spans, via = text, phrase, spans, ""
+            elif folded_text.find(fold_text_for_scan(phrase)) >= 0:
+                scan_text, scan_phrase, scan_spans = folded_text, fold_text_for_scan(phrase), folded_spans
+                via = "（经全角或大小写归一化命中）"
+            elif normalize(phrase) in normalized_text:
+                if normalized_occurrences_all_quoted(text, phrase, spans):
+                    hits.append(finding(text, "C02", "引用内出现禁用断言", "review", None, None,
+                                        "归一化后，该断言只出现在引号、反引号或块引用内。确认是在纠正或转述，"
+                                        "而不是借引用表达同意；若是同意，改写为明确否定。"))
+                else:
+                    hits.append(finding(text, "C02", "命中声明禁用断言", "blocker", None, None,
+                                        "归一化后命中禁用断言（强调符号、引号、软换行或空白差异）：" + phrase + "。核对后处理。"))
+                continue
+            else:
+                continue
+            start = scan_text.find(scan_phrase)
+            quoted_only = (all_occurrences_quoted(scan_text, scan_phrase, scan_spans)
+                           and normalized_occurrences_all_quoted(text, phrase, spans))
+            if quoted_only:
+                hits.append(finding(text, "C02", "引用内出现禁用断言", "review", start, start + len(scan_phrase),
+                                    "该断言只出现在引号、反引号或块引用内" + via + "。确认是在纠正或转述（如“这句话不成立”），"
+                                    "而不是借引用表达同意；若是同意，改写为明确否定。"))
+            else:
+                hits.append(finding(text, "C02", "命中声明禁用断言", "blocker", start, start + len(scan_phrase),
+                                    "核对合同禁止的断言" + via + "，不要自动删除引用中的内容。"))
     added = []
     if baseline is not None:
         sources = "" if contract is None else "\n".join(item["source"] for item in contract["required"])
-        known = set(NUMBER.findall(number_scan_text(baseline) + "\n" + sources))
+        known = set(NUMBER.findall(number_scan_text(baseline) + "\n" + fold_width(sources)))
         scan_text = number_scan_text(text)
         added = sorted(set(NUMBER.findall(scan_text)) - known)
         for number in added:

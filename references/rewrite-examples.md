@@ -1,6 +1,6 @@
 # 案例与复现
 
-`assets/cases.json` 是六组构造案例的唯一来源。每组包含请求、已知上下文、原回复、改写、刻意过度压缩的反例、信息合同和改写理由。
+`assets/cases.json` 是六组示例的唯一来源。每组包含请求、已知上下文、原回复、改写、刻意过度压缩的反例、信息合同和改写理由。
 
 | 场景 | 真正交付 | 不能丢掉 |
 |---|---|---|
@@ -16,8 +16,6 @@
 在技能根目录：
 
 ```sh
-python3 -B scripts/selftest.py
-python3 -B scripts/build_demo.py --check
 python3 -B scripts/build_demo.py --write
 ```
 
@@ -45,7 +43,6 @@ python3 -B scripts/build_demo.py --write
 
 ## v1 纠正记录
 
-本轮用户指出展示难看、实际价值不足。对应修复：删除硬编码效果数字和禁词高分承诺；补充带来源的上下文、合同核对、错误反例和可编辑实验台。
 
 撤回旧例中的无依据断言：ALTER 必然锁表十分钟、处方必然按某种方式计算、未知源码必然抛某异常。撤回“官方只允许三个目录”的说法：公开规范允许额外目录，scripts/references/assets 是推荐惯例。
 
