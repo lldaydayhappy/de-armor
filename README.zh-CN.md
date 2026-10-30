@@ -238,7 +238,8 @@ de-armor/
 │   ├── theory.md                # 方法与取舍
 │   ├── armor-patterns.md        # 检测协议与局限
 │   ├── overcorrection.md        # 过度压缩反例
-│   └── rewrite-examples.md      # 场景练习与复跑方法
+│   ├── rewrite-examples.md      # 场景练习与复跑方法
+│   └── system-prompt.md         # 精简版，可直接放进系统提示词
 └── scripts/
     ├── armor_lint.py            # 只读审查器
     └── build_demo.py            # 重算展示页内的审核结果
