@@ -239,7 +239,8 @@ de-armor/
 │   ├── theory.md                # Method and trade-offs
 │   ├── armor-patterns.md        # Detection protocol and limits
 │   ├── overcorrection.md        # Over-compression counterexamples
-│   └── rewrite-examples.md      # Practice scenarios and rerun guide
+│   ├── rewrite-examples.md      # Practice scenarios and rerun guide
+│   └── system-prompt.md         # Short version to paste into a system prompt
 └── scripts/
     ├── armor_lint.py            # Read-only auditor
     └── build_demo.py            # Regenerate the demo evidence

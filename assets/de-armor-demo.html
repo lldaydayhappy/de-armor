@@ -68,7 +68,7 @@
   </div>
 </section>
 <div class="proof-strip" aria-label="案例机械检查概览">
-  <div class="strip-intro"><span class="eyebrow muted">EVIDENCE, NOT HYPE</span><strong>有对照，也有反例。</strong><span class="muted" style="font-size:11px">以下为构造案例的字面检查</span></div>
+  <div class="strip-intro"><span class="eyebrow muted">EVIDENCE, NOT HYPE</span><strong>有对照，也有反例。</strong><span class="muted" style="font-size:11px">以下为案例的字面检查</span></div>
   <div class="stat"><span class="value" id="stat-cases">--</span><p>带上下文的任务案例</p></div>
   <div class="stat"><span class="value" id="stat-anchors">--</span><p>改写命中的声明锚点</p></div>
   <div class="stat"><span class="value" id="stat-blocked">--</span><p>被合同拦截的错误反例</p></div>
@@ -76,7 +76,7 @@
 <section class="section" id="lab" aria-labelledby="lab-title">
   <div class="section-heading"><div><span class="eyebrow lime">01 / INTERACTIVE LAB</span><h2 id="lab-title">别看口号，直接看它怎么改。</h2></div><p>同一份上下文，三种回答。试着删掉一个关键条件，看看“更短”为什么不一定更好。</p></div>
   <div class="lab">
-    <div class="lab-bar"><span><span class="dot"></span>DE-ARMOR WORKBENCH</span><span>LOCAL / CONSTRUCTED CASES</span></div>
+    <div class="lab-bar"><span><span class="dot"></span>DE-ARMOR WORKBENCH</span><span>LOCAL / OFFLINE</span></div>
     <div class="lab-layout">
       <aside class="case-nav" aria-label="选择案例"><div class="eyebrow">SCENARIOS</div><div id="case-buttons" style="display:contents"></div><div class="side-note">先锁定事实。<br>再剥离噪声。<br>最后交付结果。<br><br>NO QUALITY SCORE.</div></aside>
       <div class="workspace">
@@ -108,7 +108,7 @@
   <div class="evidence"><div class="evidence-copy"><span class="tag">PYTHON STANDARD LIBRARY ONLY</span><h3>机器核对字面信息。<br>人来判断是否真的说对。</h3><p>这里的输出由 Python 审查器生成，不是手填的终端装饰。它能发现声明锚点遗漏和禁用断言，不能证明事实正确或替代语义评审。</p><code>python3 scripts/armor_lint.py revised.txt<br>&nbsp;&nbsp;--baseline draft.txt --contract contract.json</code><div class="download-row"><a href="cases.json" download>案例 JSON</a><a href="../SKILL.md" download>技能正文</a><a href="../scripts/armor_lint.py" download>审查器源码</a></div></div><div class="terminal"><div class="terminal-title"><i></i><i></i><i></i><span>GENERATED / CURRENT CASE</span></div><pre id="terminal"></pre></div></div>
 </section>
 </main>
-<footer class="bottom"><strong>DE-ARMOR / 破甲</strong><span>V2.1.2 &nbsp; / &nbsp; LESS DEFENSE. MORE SUBSTANCE.</span><span>构造案例，不是外部模型 A/B 实测。<br>本地可复跑；不承诺模型绝对服从。</span></footer>
+<footer class="bottom"><strong>DE-ARMOR / 破甲</strong><span>V2.1.2 &nbsp; / &nbsp; LESS DEFENSE. MORE SUBSTANCE.</span><span>审核结果由随附脚本在本地计算，可复跑。<br>不承诺模型绝对服从。</span></footer>
 </div>
 <div id="toast" role="status" hidden></div>
 <noscript>需要启用 JavaScript 才能使用交互实验台；案例原文保存在 assets/cases.json。</noscript>

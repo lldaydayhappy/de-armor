@@ -130,6 +130,7 @@ python3 scripts/armor_lint.py revised.txt --baseline draft.txt --contract contra
 - 检测协议与局限：`references/armor-patterns.md`。
 - 过度压缩的反例：`references/overcorrection.md`。
 - 场景练习与复跑方法：`references/rewrite-examples.md`。
+- 精简版（可直接放进系统提示词，不加载完整技能时使用）：`references/system-prompt.md`。
 - 案例唯一数据源：`assets/cases.json`。
 - 离线交互实验台：`assets/de-armor-demo.html`。
 - 实际浏览器截图：`assets/screenshots/`。
